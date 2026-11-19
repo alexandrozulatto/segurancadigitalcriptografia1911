@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laboratório Prático: Criptografia de Arquivos com 7-Zip</title>
+  <style>
+    /* =====================================================================
+       RESET E VARIÁVEIS DE DESIGN (100% OFFLINE, SEM DEPENDÊNCIAS EXTERNAS)
+       ===================================================================== */
+    :root {
+      --bg-app: #0f172a;
+      --bg-panel: #1e293b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+
+      /* Cores Clássicas Windows / 7-Zip */
+      --win-face: #f0f0f0;
+      --win-blue-bar: linear-gradient(90deg, #0058e6 0%, #2b88ff 50%, #0058e6 100%);
+      --win-select: #cce8ff;
+      --win-select-border: #99d1ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* =====================================================================
+       CABEÇALHO E INDICADOR DE ETAPAS
+       ===================================================================== */
+    .edu-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f8fafc;
+      padding: 14px 24px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .edu-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .edu-logo-badge {
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 15px;
+      padding: 6px 11px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45);
+    }
+
+    .edu-title h1 {
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .edu-title p {
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .step-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      transition: all 0.25s ease;
+    }
+
+    .step-pill.active {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    .step-pill.done {
+      background: #14532d;
+      color: #86efac;
+      border-color: #22c55e;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      font-size: 0.7rem;
+    }
+
+    .timer-chip {
+      background: #020617;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.82rem;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+
+    /* =====================================================================
+       LAYOUT PRINCIPAL
+       ===================================================================== */
+    .main-workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 18px;
+      padding: 18px 24px;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .main-workspace.single-col {
+      grid-template-columns: 1fr;
+      max-width: 820px;
+    }
+
+    @media (max-width: 980px) {
+      .main-workspace {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+    }
+
+    .stage-container {
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 550px;
+      border: 1px solid #cbd5e1;
+    }
+
+    /* Painel Lateral de Instruções */
+    .mission-sidebar {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 20px;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .mission-badge {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .mission-title {
+      font-size: 1.12rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .mission-desc {
+      font-size: 0.86rem;
+      color: #334155;
+      margin-bottom: 14px;
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      color: #334155;
+      transition: all 0.25s ease;
+    }
+
+    .checklist-item.completed {
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #14532d;
+    }
+
+    .check-circle {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      border-radius: 50%;
+      border: 2px solid #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 1px;
+    }
+
+    .checklist-item.completed .check-circle {
+      background: #16a34a;
+      border-color: #16a34a;
+      color: #ffffff;
+    }
+
+    .tip-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #78350f;
+      margin-top: 14px;
+    }
+
+    .wrong-pwd-callout {
+      background: #fef2f2;
+      border: 2px dashed #ef4444;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      color: #7f1d1d;
+      font-size: 0.84rem;
+    }
+
+    .wrong-pwd-code {
+      display: inline-block;
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+      font-family: "Consolas", "Courier New", monospace;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 2px 8px;
+      border-radius: 5px;
+      margin-top: 4px;
+    }
+
+    .mission-footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 9px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn-primary:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    .btn-success {
+      background: #16a34a;
+      color: #ffffff;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 9px;
+      font-size: 0.94rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn-success:hover {
+      background: #15803d;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    /* =====================================================================
+       TELA INICIAL DE IDENTIFICAÇÃO E TELA FINAL DE RELATÓRIO
+       ===================================================================== */
+    .centered-card-screen {
+      padding: 36px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    }
+
+    .id-box {
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .id-box h2 {
+      font-size: 1.35rem;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    .id-box p {
+      font-size: 0.9rem;
+      color: #475569;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #94a3b8;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .form-control:focus {
+      outline: 2px solid #2563eb;
+      border-color: transparent;
+    }
+
+    /* =====================================================================
+       AMBIENTE DESKTOP / WINDOWS EXPLORER SIMULADO
+       ===================================================================== */
+    .win-desktop {
+      flex: 1;
+      background: linear-gradient(135deg, #1b5e9c 0%, #103b66 100%);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      user-select: none;
+      min-height: 540px;
+    }
+
+    .win-explorer {
+      margin: 18px;
+      background: #ffffff;
+      border: 1px solid #003c74;
+      border-radius: 6px 6px 0 0;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: visible;
+    }
+
+    .win-titlebar {
+      background: var(--win-blue-bar);
+      color: #ffffff;
+      padding: 7px 12px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 5px 5px 0 0;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+    }
+
+    .win-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .win-ctrl-btn {
+      width: 22px;
+      height: 20px;
+      background: #ece9d8;
+      color: #000000;
+      border: 1px solid #ffffff;
+      border-right-color: #404040;
+      border-bottom-color: #404040;
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .win-ctrl-btn.close {
+      background: #e04338;
+      color: #ffffff;
+    }
+
+    .win-addressbar {
+      background: #f1f3f5;
+      border-bottom: 1px solid #d0d7de;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: #334155;
+    }
+
+    .win-path-box {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .win-files-area {
+      flex: 1;
+      padding: 16px;
+      background: #ffffff;
+      position: relative;
+    }
+
+    .win-files-table-header {
+      display: grid;
+      grid-template-columns: 2.3fr 1.2fr 0.9fr;
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 2.3fr 1.2fr 0.9fr;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      font-size: 0.86rem;
+      cursor: pointer;
+      transition: background 0.12s;
+      margin-bottom: 4px;
+    }
+
+    .file-row:hover {
+      background: #f1f7fe;
+      border-color: #d8e8fa;
+    }
+
+    .file-row.selected {
+      background: var(--win-select);
+      border-color: var(--win-select-border);
+    }
+
+    .file-row.target-highlight {
+      animation: pulseTarget 2s infinite;
+    }
+
+    @keyframes pulseTarget {
+      0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+      70% { box-shadow: 0 0 0 7px rgba(37, 99, 235, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    }
+
+    .file-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      color: #0f172a;
+      word-break: break-word;
+    }
+
+    .file-meta {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .win-taskbar {
+      height: 34px;
+      background: linear-gradient(180deg, #245edb 0%, #1941a5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-right: 12px;
+      color: #ffffff;
+      font-size: 0.78rem;
+      margin-top: auto;
+    }
+
+    .win-start-btn {
+      height: 100%;
+      background: linear-gradient(180deg, #3c9d3c 0%, #267326 100%);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-style: italic;
+      border-radius: 0 10px 10px 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    /* =====================================================================
+       MENU DE CONTEXTO CLÁSSICO DO WINDOWS + SUBMENU 7-ZIP
+       ===================================================================== */
+    .context-menu {
+      position: fixed;
+      z-index: 1000;
+      background: #f2f2f2;
+      border: 1px solid #979797;
+      box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.35);
+      min-width: 220px;
+      padding: 3px 0;
+      font-size: 0.82rem;
+      color: #000000;
+      display: none;
+    }
+
+    .context-menu.visible {
+      display: block;
+    }
+
+    .ctx-item {
+      padding: 6px 24px 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .ctx-item:hover {
+      background: #91c9f7;
+    }
+
+    .ctx-item.has-submenu::after {
+      content: "▶";
+      font-size: 9px;
+      color: #333333;
+    }
+
+    .ctx-separator {
+      height: 1px;
+      background: #d7d7d7;
+      margin: 3px 4px;
+    }
+
+    .ctx-badge-7z {
+      background: #111827;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 2px;
+    }
+
+    .ctx-submenu {
+      position: absolute;
+      left: 100%;
+      top: -3px;
+      background: #f2f2f2;
+      border: 1px solid #979797;
+      box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.35);
+      min-width: 255px;
+      padding: 3px 0;
+      display: none;
+    }
+
+    .ctx-item.has-submenu:hover .ctx-submenu,
+    .ctx-item.has-submenu.open .ctx-submenu {
+      display: block;
+    }
+
+    @media (max-width: 640px) {
+      .ctx-submenu {
+        left: 12px;
+        top: 100%;
+        z-index: 1010;
+      }
+    }
+
+    /* =====================================================================
+       JANELAS MODAIS CLÁSSICAS DO 7-ZIP
+       ===================================================================== */
+    .win-modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.48);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      z-index: 50;
+    }
+
+    .dialog-7z {
+      background: var(--win-face);
+      border: 1px solid #003c74;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+      width: 100%;
+      max-width: 535px;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 0.82rem;
+      color: #000000;
+    }
+
+    .dialog-7z-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .form-row-7z {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    @media (max-width: 520px) {
+      .form-row-7z {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+    }
+
+    .input-7z, .select-7z {
+      background: #ffffff;
+      border: 1px solid #7f9db9;
+      padding: 5px 8px;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 0.83rem;
+      color: #000000;
+      width: 100%;
+    }
+
+    .input-7z:focus, .select-7z:focus {
+      outline: 1px solid #2563eb;
+      border-color: #2563eb;
+    }
+
+    .groupbox-7z {
+      border: 1px solid #bfcddb;
+      padding: 12px;
+      margin-top: 4px;
+      position: relative;
+      background: #f7f7f7;
+    }
+
+    .groupbox-7z-legend {
+      position: absolute;
+      top: -9px;
+      left: 10px;
+      background: var(--win-face);
+      padding: 0 6px;
+      font-weight: 600;
+      color: #003399;
+      font-size: 0.8rem;
+    }
+
+    .win-btn {
+      background: linear-gradient(180deg, #ffffff 0%, #e5e5e5 100%);
+      border: 1px solid #707070;
+      padding: 5px 16px;
+      font-size: 0.82rem;
+      color: #000000;
+      cursor: pointer;
+      min-width: 82px;
+      border-radius: 2px;
+    }
+
+    .win-btn:hover {
+      border-color: #3c7fb1;
+      background: linear-gradient(180deg, #eaf6fd 0%, #bee6fd 100%);
+    }
+
+    .win-btn.default {
+      border: 2px solid #3c7fb1;
+      font-weight: 600;
+    }
+
+    .strength-meter-wrap {
+      margin-top: 5px;
+    }
+
+    .strength-bar-bg {
+      height: 6px;
+      background: #d1d5db;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .strength-bar-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.25s, background-color 0.25s;
+    }
+
+    .strength-label {
+      font-size: 0.74rem;
+      margin-top: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-7z-track {
+      height: 18px;
+      background: #ffffff;
+      border: 1px solid #7f9db9;
+      padding: 2px;
+    }
+
+    .progress-7z-fill {
+      height: 100%;
+      width: 0%;
+      background: repeating-linear-gradient(
+        90deg,
+        #16a34a 0px,
+        #16a34a 10px,
+        #22c55e 10px,
+        #22c55e 12px
+      );
+      transition: width 0.15s linear;
+    }
+
+    .win-error-box {
+      background: #fff1f2;
+      border: 1px solid #fda4af;
+      color: #9f1239;
+      padding: 9px 11px;
+      font-size: 0.81rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      border-radius: 3px;
+    }
+
+    /* =====================================================================
+       TELA FINAL DE RELATÓRIO E PDF
+       ===================================================================== */
+    .report-card {
+      width: 100%;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+    }
+
+    .report-header {
+      background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+      color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .report-field {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 8px;
+    }
+
+    .report-field span {
+      display: block;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .report-field strong {
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .report-actions-list {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 0.86rem;
+      color: #14532d;
+    }
+
+    .report-actions-list li {
+      margin-bottom: 5px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CABEÇALHO -->
+  <header class="edu-header">
+    <div class="edu-brand">
+      <div class="edu-logo-badge">7-Zip LAB</div>
+      <div class="edu-title">
+        <h1>Laboratório Prático: Criptografia de Arquivos com 7-Zip</h1>
+        <p>Simulação prática passo a passo com AES-256 e geração de comprovante em PDF</p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <nav class="stepper" id="stepperNav" aria-label="Progresso da prática">
+        <div class="step-pill active" id="pill-0"><span class="step-num">ID</span> Aluno</div>
+        <div class="step-pill" id="pill-1"><span class="step-num">1</span> Explorador</div>
+        <div class="step-pill" id="pill-2"><span class="step-num">2</span> Criptografar</div>
+        <div class="step-pill" id="pill-3"><span class="step-num">3</span> Senha Errada</div>
+        <div class="step-pill" id="pill-4"><span class="step-num">4</span> Extrair</div>
+        <div class="step-pill" id="pill-5"><span class="step-num">PDF</span> Relatório</div>
+      </nav>
+      <div class="timer-chip" id="timerDisplay" title="Tempo decorrido">00:00</div>
+    </div>
+  </header>
+
+  <!-- ÁREA PRINCIPAL -->
+  <main class="main-workspace single-col" id="mainWorkspace">
+    <!-- CONTAINER DA TELA ATIVA -->
+    <section class="stage-container" id="stageContainer"></section>
+
+    <!-- PAINEL LATERAL DE INSTRUÇÕES (OCULTO NA TELA INICIAL E FINAL) -->
+    <aside class="mission-sidebar hidden" id="missionSidebar">
+      <div>
+        <span class="mission-badge" id="missionBadge">Etapa 1 de 4</span>
+        <h2 class="mission-title" id="missionTitle">Instruções</h2>
+        <p class="mission-desc" id="missionDesc"></p>
+
+        <ul class="checklist" id="missionChecklist"></ul>
+
+        <div id="missionExtraAlert"></div>
+
+        <div class="tip-box" id="missionTip"></div>
+      </div>
+
+      <div class="mission-footer">
+        <button type="button" class="btn-primary" id="btnNextStep" disabled>
+          Avançar →
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- MENU DE CONTEXTO FLUTUANTE (BOTÃO DIREITO NO EXPLORER) -->
+  <div class="context-menu" id="winContextMenu" role="menu">
+    <div class="ctx-item" onclick="handleContextAction('abrir')">
+      <span><strong>Abrir</strong></span>
+    </div>
+    <div class="ctx-item has-submenu" id="ctx7zipParent" onclick="toggleSubmenuMobile(event)">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="ctx-badge-7z">7z</span>
+        <span>7-Zip</span>
+      </span>
+      <div class="ctx-submenu" id="ctx7zipSubmenu">
+        <div class="ctx-item" onclick="handleContextAction('abrir_compactado')">Abrir arquivo compactado</div>
+        <div class="ctx-item" onclick="handleContextAction('extrair_aqui')">Extrair aqui</div>
+        <div class="ctx-separator"></div>
+        <div class="ctx-item" onclick="handleContextAction('adicionar_arquivo')">
+          <strong>Adicionar ao arquivo...</strong>
+        </div>
+        <div class="ctx-item" onclick="handleContextAction('adicionar_rapido')">Adicionar para "Relatorio_Financeiro_2026.7z"</div>
+      </div>
+    </div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" onclick="handleContextAction('copiar')">Copiar</div>
+    <div class="ctx-item" onclick="handleContextAction('propriedades')">Propriedades</div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       ESTADO GLOBAL DA SIMULAÇÃO
+       ===================================================================== */
+    const state = {
+      screen: 0, // 0: ID, 1: Explorer, 2: Criar .7z, 3: Senha Errada, 4: Senha Correta, 5: PDF Final
+      studentName: "",
+      studentClass: "",
+      startTimeMs: null,
+      elapsedSeconds: 0,
+      timerInterval: null,
+
+      // Etapa 1
+      fileSelected: false,
+      contextMenuOpened: false,
+
+      // Etapa 2
+      createdPassword: "",
+      encryptFileNamesChecked: false,
+      archiveCreated: false,
+
+      // Etapa 3
+      testedWrongPassword: false,
+
+      // Etapa 4
+      extractedSuccess: false,
+
+      // Etapa 5
+      completionTimestamp: "",
+      authCode: ""
+    };
+
+    /* =====================================================================
+       ÍCONES SVG INLINE (100% OFFLINE)
+       ===================================================================== */
+    const icons = {
+      folder: '<svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>',
+      pdf: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="2" width="18" height="20" rx="2" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/><text x="12" y="15" text-anchor="middle" fill="#dc2626" font-size="6.5" font-weight="bold" font-family="Arial">PDF</text></svg>',
+      doc: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="2" width="18" height="20" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><line x1="7" y1="8" x2="17" y2="8" stroke="#2563eb" stroke-width="1.5"/><line x1="7" y1="12" x2="17" y2="12" stroke="#2563eb" stroke-width="1.5"/><line x1="7" y1="16" x2="13" y2="16" stroke="#2563eb" stroke-width="1.5"/></svg>',
+      archive7z: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" fill="#1e293b" stroke="#0f172a" stroke-width="1.5"/><text x="9.5" y="15" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="bold" font-family="Arial">7z</text><rect x="15" y="11" width="6" height="5" rx="1" fill="#f59e0b"/><path d="M16.5 11V9.5a1.5 1.5 0 0 1 3 0V11" stroke="#f59e0b" stroke-width="1.4"/></svg>'
+    };
+
+    /* =====================================================================
+       UTILITÁRIOS DE SEGURANÇA, CRONÔMETRO E SENHA ERRADA SUGERIDA
+       ===================================================================== */
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function getSuggestedWrongPassword() {
+      // Garante que a senha errada sugerida nunca coincida com a senha escolhida pelo aluno
+      if (state.createdPassword.toLowerCase() === "teste123") {
+        return "senha_errada_00";
+      }
+      return "teste123";
+    }
+
+    function formatDuration(totalSec) {
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      return String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+    }
+
+    function startTimer() {
+      stopTimer();
+      state.startTimeMs = Date.now();
+      state.elapsedSeconds = 0;
+      document.getElementById("timerDisplay").textContent = "00:00";
+      state.timerInterval = setInterval(function () {
+        state.elapsedSeconds = Math.floor((Date.now() - state.startTimeMs) / 1000);
+        document.getElementById("timerDisplay").textContent = formatDuration(state.elapsedSeconds);
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
+    }
+
+    function evaluatePasswordStrength(pwd) {
+      if (!pwd) return { label: "Nenhuma senha digitada", color: "#94a3b8", pct: 0 };
+      let score = 0;
+      if (pwd.length >= 6) score += 1;
+      if (pwd.length >= 10) score += 1;
+      if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1;
+      if (/[0-9]/.test(pwd)) score += 1;
+      if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+
+      if (pwd.length < 6) {
+        return { label: "Muito fraca (mínimo 6 caracteres)", color: "#dc2626", pct: 20 };
+      }
+      if (score <= 2) {
+        return { label: "Razoável (pode incluir números ou maiúsculas)", color: "#f59e0b", pct: 55 };
+      }
+      if (score <= 4) {
+        return { label: "Boa (adequada para AES-256)", color: "#16a34a", pct: 82 };
+      }
+      return { label: "Excelente (alta segurança)", color: "#15803d", pct: 100 };
+    }
+
+    function showToast(msg) {
+      const old = document.getElementById("simToast");
+      if (old) old.remove();
+      const el = document.createElement("div");
+      el.id = "simToast";
+      el.style.cssText =
+        "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);" +
+        "background:#0f172a;color:#f8fafc;padding:12px 18px;border-radius:8px;" +
+        "border-left:4px solid #f59e0b;font-size:0.85rem;z-index:2000;" +
+        "box-shadow:0 10px 25px rgba(0,0,0,0.45);max-width:92%;";
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(function () {
+        if (el.parentNode) el.remove();
+      }, 4200);
+    }
+
+    /* =====================================================================
+       ATUALIZAÇÃO DO STEPPER E PAINEL LATERAL
+       ===================================================================== */
+    function updateLayoutAndSidebar() {
+      // Atualizar pílulas do cabeçalho
+      for (let i = 0; i <= 5; i++) {
+        const pill = document.getElementById("pill-" + i);
+        if (!pill) continue;
+        pill.classList.remove("active", "done");
+        if (i < state.screen) pill.classList.add("done");
+        else if (i === state.screen) pill.classList.add("active");
+      }
+
+      const workspace = document.getElementById("mainWorkspace");
+      const sidebar = document.getElementById("missionSidebar");
+
+      // Telas 0 (ID) e 5 (PDF Final) usam layout centralizado sem sidebar
+      if (state.screen === 0 || state.screen === 5) {
+        workspace.classList.add("single-col");
+        sidebar.classList.add("hidden");
+        return;
+      }
+
+      workspace.classList.remove("single-col");
+      sidebar.classList.remove("hidden");
+
+      const badge = document.getElementById("missionBadge");
+      const title = document.getElementById("missionTitle");
+      const desc = document.getElementById("missionDesc");
+      const checklist = document.getElementById("missionChecklist");
+      const extraAlert = document.getElementById("missionExtraAlert");
+      const tip = document.getElementById("missionTip");
+      const btnNext = document.getElementById("btnNextStep");
+
+      badge.textContent = "Etapa " + state.screen + " de 4";
+      extraAlert.innerHTML = "";
+      let tasks = [];
+      let canAdvance = false;
+
+      if (state.screen === 1) {
+        title.textContent = "1. Explorador de Arquivos";
+        desc.textContent = "Localize o documento confidencial na pasta e abra as opções de criptografia do 7-Zip.";
+        tasks = [
+          {
+            done: state.fileSelected,
+            text: "Selecione o arquivo <strong>Relatorio_Financeiro_2026.pdf</strong>."
+          },
+          {
+            done: state.contextMenuOpened,
+            text: "Clique com o <strong>botão direito</strong> (ou use o botão <em>Opções (Botão Direito)</em>), abra <strong>7-Zip</strong> e clique em <strong>Adicionar ao arquivo...</strong>"
+          }
+        ];
+        tip.innerHTML = "<strong>Dica:</strong> Nunca escolha <em>'Adicionar para .7z'</em> quando precisar proteger dados, pois essa opção compacta sem pedir senha.";
+        btnNext.textContent = "Aguardando escolha no menu...";
+        canAdvance = false;
+      } else if (state.screen === 2) {
+        title.textContent = "2. Criptografar com AES-256";
+        desc.textContent = "Configure os parâmetros de segurança na janela clássica do 7-Zip.";
+        tasks = [
+          {
+            done: state.createdPassword.length >= 6,
+            text: "Digite uma senha com pelo menos <strong>6 caracteres</strong>."
+          },
+          {
+            done: state.encryptFileNamesChecked,
+            text: "Marque a caixa <strong>Encriptar nomes dos arquivos</strong>."
+          },
+          {
+            done: state.archiveCreated,
+            text: "Repita a senha no campo <em>Reintroduzir palavra-passe</em> e clique em <strong>OK</strong>."
+          }
+        ];
+        tip.innerHTML = "<strong>Por que encriptar nomes?</strong> Sem essa opção, qualquer pessoa consegue ver a lista de arquivos dentro do pacote mesmo sem saber a senha.";
+        btnNext.textContent = "Clique em OK na janela do 7-Zip";
+        canAdvance = state.archiveCreated;
+      } else if (state.screen === 3) {
+        const wrongSample = getSuggestedWrongPassword();
+        title.textContent = "3. Teste de Bloqueio (Senha Errada)";
+        desc.textContent = "Comprove que o 7-Zip bloqueia o acesso quando alguém digita uma senha incorreta.";
+        tasks = [
+          {
+            done: state.testedWrongPassword,
+            text: "Abra o arquivo <strong>Relatorio_Financeiro_2026.7z</strong> e digite a senha errada indicada abaixo."
+          }
+        ];
+        extraAlert.innerHTML =
+          '<div class="wrong-pwd-callout">' +
+          "<strong>⚠️ Senha errada para digitar neste teste:</strong><br>" +
+          '<span class="wrong-pwd-code">' + escapeHTML(wrongSample) + "</span>" +
+          "<div style='margin-top:4px;font-size:0.78rem;'>Digite exatamente esta palavra para provocar o erro de autenticação do 7-Zip.</div>" +
+          "</div>";
+        tip.innerHTML = "<strong>Objetivo:</strong> Simular uma tentativa não autorizada de abertura do arquivo criptografado.";
+        btnNext.textContent = "Ir para Etapa 4 (Senha Correta) →";
+        canAdvance = state.testedWrongPassword;
+      } else if (state.screen === 4) {
+        title.textContent = "4. Descriptografia e Extração";
+        desc.textContent = "Agora utilize a senha verdadeira que você definiu na Etapa 2 para extrair o documento.";
+        tasks = [
+          {
+            done: state.extractedSuccess,
+            text: "Informe a <strong>sua senha correta</strong> na janela <em>Introduzir palavra-passe</em> e clique em <strong>OK</strong>."
+          }
+        ];
+        tip.innerHTML =
+          "<strong>Esqueceu sua senha?</strong> Sua senha criada foi <code style='background:#fef3c7;padding:1px 5px;border-radius:3px;font-weight:bold;'>" +
+          escapeHTML(state.createdPassword) +
+          "</code>.";
+        btnNext.textContent = "Concluir Atividade e Gerar Relatório →";
+        canAdvance = state.extractedSuccess;
+      }
+
+      checklist.innerHTML = tasks
+        .map(function (t) {
+          return (
+            '<li class="checklist-item ' + (t.done ? "completed" : "") + '">' +
+            '<span class="check-circle">' + (t.done ? "✓" : "") + "</span>" +
+            "<span>" + t.text + "</span>" +
+            "</li>"
+          );
+        })
+        .join("");
+
+      btnNext.disabled = !canAdvance;
+    }
+
+    /* =====================================================================
+       RENDERIZAÇÃO DAS TELAS
+       ===================================================================== */
+    function renderCurrentScreen() {
+      hideContextMenu();
+      const stage = document.getElementById("stageContainer");
+
+      if (state.screen === 0) renderScreen0Identification(stage);
+      else if (state.screen === 1) renderScreen1Explorer(stage);
+      else if (state.screen === 2) renderScreen2Create7zDialog(stage);
+      else if (state.screen === 3) renderScreen3WrongPasswordTest(stage);
+      else if (state.screen === 4) renderScreen4RightPasswordExtract(stage);
+      else if (state.screen === 5) renderScreen5FinalReport(stage);
+
+      updateLayoutAndSidebar();
+    }
+
+    /* ---------------------------------------------------------------------
+       TELA 0: IDENTIFICAÇÃO DO ALUNO
+       --------------------------------------------------------------------- */
+    function renderScreen0Identification(container) {
+      container.innerHTML =
+        '<div class="centered-card-screen">' +
+        '  <div class="id-box">' +
+        '    <div style="display:inline-block;background:#dbeafe;color:#1e40af;font-weight:700;font-size:0.75rem;padding:4px 10px;border-radius:6px;margin-bottom:10px;">ATIVIDADE PRÁTICA GUIADA</div>' +
+        "    <h2>Identificação do Aluno</h2>" +
+        "    <p>Preencha seus dados abaixo para iniciar a prática de criptografia com o 7-Zip. Ao concluir as 4 etapas, você poderá baixar seu comprovante em PDF.</p>" +
+        '    <form id="studentStartForm">' +
+        '      <div class="form-group">' +
+        '        <label for="inputStudentName">Nome Completo do Aluno *</label>' +
+        '        <input type="text" id="inputStudentName" class="form-control" placeholder="Ex: Maria Eduarda Silva" required value="' + escapeHTML(state.studentName) + '" />' +
+        "      </div>" +
+        '      <div class="form-group">' +
+        '        <label for="inputStudentClass">Turma / Série (opcional)</label>' +
+        '        <input type="text" id="inputStudentClass" class="form-control" placeholder="Ex: 2º Ano B - Informática" value="' + escapeHTML(state.studentClass) + '" />' +
+        "      </div>" +
+        '      <div id="idErrorMsg" class="win-error-box hidden" style="margin-bottom:14px;">⚠️ Por favor, digite o seu <strong>Nome Completo</strong> para continuar.</div>' +
+        '      <button type="submit" class="btn-primary">Iniciar Prática →</button>' +
+        "    </form>" +
+        "  </div>" +
+        "</div>";
+
+      const form = document.getElementById("studentStartForm");
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const nameVal = document.getElementById("inputStudentName").value.trim();
+        const classVal = document.getElementById("inputStudentClass").value.trim();
+        if (nameVal.length < 3) {
+          document.getElementById("idErrorMsg").classList.remove("hidden");
+          document.getElementById("inputStudentName").focus();
+          return;
+        }
+        state.studentName = nameVal;
+        state.studentClass = classVal || "Não informada";
+        startTimer();
+        state.screen = 1;
+        renderCurrentScreen();
+      });
+    }
+
+    /* ---------------------------------------------------------------------
+       ETAPA 1: EXPLORADOR DE ARQUIVOS DO WINDOWS
+       --------------------------------------------------------------------- */
+    function renderScreen1Explorer(container) {
+      container.innerHTML =
+        '<div class="win-desktop">' +
+        '  <div class="win-explorer">' +
+        '    <div class="win-titlebar">' +
+        '      <div style="display:flex;align-items:center;gap:8px;">' + icons.folder + "<span>Relatorios_2026 - Explorador de Arquivos</span></div>" +
+        '      <div class="win-controls"><span class="win-ctrl-btn">_</span><span class="win-ctrl-btn">□</span><span class="win-ctrl-btn close">✕</span></div>' +
+        "    </div>" +
+        '    <div class="win-addressbar">' +
+        "      <span>⬅ ➡</span>" +
+        '      <div class="win-path-box">' + icons.folder + "<span>Este Computador &gt; Documentos &gt; Relatorios_2026</span></div>" +
+        "    </div>" +
+        '    <div class="win-files-area">' +
+        '      <div class="win-files-table-header"><span>Nome</span><span>Tipo</span><span>Tamanho</span></div>' +
+        '      <div class="file-row" onclick="selectExplorerRow(this, false)">' +
+        '        <div class="file-name-cell">' + icons.doc + "<span>Ata_Reuniao_Diretoria.docx</span></div>" +
+        '        <div class="file-meta">Documento Word</div>' +
+        '        <div class="file-meta">64 KB</div>' +
+        "      </div>" +
+        '      <div class="file-row target-highlight" id="targetPdfRow" onclick="selectExplorerRow(this, true)" oncontextmenu="open7ZipContextMenu(event, false)">' +
+        '        <div class="file-name-cell">' + icons.pdf + "<span><strong>Relatorio_Financeiro_2026.pdf</strong></span></div>" +
+        '        <div class="file-meta">Documento PDF</div>' +
+        '        <div class="file-meta">2.480 KB</div>' +
+        '        <div style="grid-column:1/-1;margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#eff6ff;padding:6px 10px;border-radius:4px;border:1px dashed #3b82f6;">' +
+        '          <span style="font-size:0.78rem;color:#1e40af;">Clique com o <strong>botão direito</strong> sobre este arquivo ou use o botão ao lado:</span>' +
+        '          <button type="button" class="win-btn default" style="padding:3px 10px;font-size:0.76rem;" onclick="open7ZipContextMenu(event, true)">Opções (Botão Direito) ▾</button>' +
+        "        </div>" +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+        '  <div class="win-taskbar">' +
+        '    <div class="win-start-btn">⊞ Iniciar</div>' +
+        '    <div style="font-size:0.75rem;">Aluno: ' + escapeHTML(state.studentName) + "</div>" +
+        "  </div>" +
+        "</div>";
+    }
+
+    function selectExplorerRow(el, isTarget) {
+      document.querySelectorAll(".file-row").forEach(function (r) {
+        r.classList.remove("selected");
+      });
+      el.classList.add("selected");
+      if (isTarget) {
+        state.fileSelected = true;
+        updateLayoutAndSidebar();
+      }
+    }
+
+    function open7ZipContextMenu(e, fromButton) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const targetRow = document.getElementById("targetPdfRow");
+      if (targetRow) selectExplorerRow(targetRow, true);
+
+      state.fileSelected = true;
+      state.contextMenuOpened = true;
+      updateLayoutAndSidebar();
+
+      const menu = document.getElementById("winContextMenu");
+      const parent7z = document.getElementById("ctx7zipParent");
+      parent7z.classList.add("open");
+
+      let x = e.clientX || 260;
+      let y = e.clientY || 240;
+      if (fromButton && e.target) {
+        const rect = e.target.getBoundingClientRect();
+        x = rect.left;
+        y = rect.bottom + 4;
+      }
+
+      const maxX = window.innerWidth - 250;
+      const maxY = window.innerHeight - 230;
+      menu.style.left = Math.max(10, Math.min(x, maxX)) + "px";
+      menu.style.top = Math.max(10, Math.min(y, maxY)) + "px";
+      menu.classList.add("visible");
+    }
+
+    function toggleSubmenuMobile(e) {
+      e.stopPropagation();
+      document.getElementById("ctx7zipParent").classList.toggle("open");
+    }
+
+    function hideContextMenu() {
+      const menu = document.getElementById("winContextMenu");
+      if (menu) menu.classList.remove("visible");
+    }
+
+    document.addEventListener("click", function (e) {
+      if (!e.target.closest("#winContextMenu")) {
+        hideContextMenu();
+      }
+    });
+
+    function handleContextAction(action) {
+      hideContextMenu();
+      if (action === "adicionar_arquivo") {
+        state.screen = 2;
+        renderCurrentScreen();
+      } else if (action === "adicionar_rapido") {
+        showToast("Atenção: 'Adicionar para .7z' compacta SEM senha! Clique em 'Adicionar ao arquivo...' para criptografar.");
+      } else {
+        showToast("Abra o submenu '7-Zip' e clique em 'Adicionar ao arquivo...'.");
+      }
+    }
+
+    /* ---------------------------------------------------------------------
+       ETAPA 2: JANELA CLÁSSICA "ADICIONAR AO ARQUIVO" DO 7-ZIP
+       --------------------------------------------------------------------- */
+    function renderScreen2Create7zDialog(container) {
+      container.innerHTML =
+        '<div class="win-desktop">' +
+        '  <div class="win-explorer" style="opacity:0.75;">' +
+        '    <div class="win-titlebar"><span>Relatorios_2026 - Explorador de Arquivos</span></div>' +
+        '    <div class="win-files-area">' +
+        '      <div class="file-row selected"><div class="file-name-cell">' + icons.pdf + "<span>Relatorio_Financeiro_2026.pdf</span></div><div class='file-meta'>Documento PDF</div><div class='file-meta'>2.480 KB</div></div>" +
+        "    </div>" +
+        "  </div>" +
+        '  <div class="win-modal-overlay">' +
+        '    <div class="dialog-7z" role="dialog" aria-labelledby="dlg7zTitle">' +
+        '      <div class="win-titlebar">' +
+        '        <div style="display:flex;align-items:center;gap:6px;"><span class="ctx-badge-7z">7z</span><span id="dlg7zTitle">Adicionar ao arquivo</span></div>' +
+        '        <div class="win-controls"><span class="win-ctrl-btn close" title="Voltar" onclick="goToScreen(1)">✕</span></div>' +
+        "      </div>" +
+        '      <div class="dialog-7z-body">' +
+        '        <div class="form-row-7z">' +
+        '          <label for="archiveNameInput"><strong>Arquivo:</strong></label>' +
+        '          <input type="text" id="archiveNameInput" class="input-7z" value="Relatorio_Financeiro_2026.7z" readonly />' +
+        "        </div>" +
+        '        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+        '          <div class="form-row-7z" style="grid-template-columns:120px 1fr;">' +
+        '            <label for="formatSelect">Formato do arquivo:</label>' +
+        '            <select id="formatSelect" class="select-7z">' +
+        '              <option value="7z" selected>7z</option>' +
+        '              <option value="zip">zip</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="form-row-7z" style="grid-template-columns:125px 1fr;">' +
+        '            <label for="levelSelect">Nível de compressão:</label>' +
+        '            <select id="levelSelect" class="select-7z">' +
+        '              <option value="normal" selected>Normal</option>' +
+        '              <option value="max">Máximo</option>' +
+        "            </select>" +
+        "          </div>" +
+        "        </div>" +
+        '        <div class="groupbox-7z">' +
+        '          <span class="groupbox-7z-legend">Encriptação</span>' +
+        '          <div style="display:flex;flex-direction:column;gap:9px;margin-top:4px;">' +
+        "            <div>" +
+        '              <label for="pwdInput" style="display:block;margin-bottom:3px;">Introduzir palavra-passe (Senha):</label>' +
+        '              <input type="password" id="pwdInput" class="input-7z" placeholder="Crie uma senha com pelo menos 6 caracteres..." autocomplete="new-password" />' +
+        '              <div class="strength-meter-wrap">' +
+        '                <div class="strength-bar-bg"><div class="strength-bar-fill" id="pwdStrengthFill"></div></div>' +
+        '                <div class="strength-label">' +
+        '                  <span id="pwdStrengthText" style="color:#64748b;">Nenhuma senha digitada</span>' +
+        '                  <span id="pwdLengthCount" style="color:#64748b;">0 caracteres</span>' +
+        "                </div>" +
+        "              </div>" +
+        "            </div>" +
+        "            <div>" +
+        '              <label for="pwdConfirmInput" style="display:block;margin-bottom:3px;">Reintroduzir palavra-passe (Confirmar senha):</label>' +
+        '              <input type="password" id="pwdConfirmInput" class="input-7z" placeholder="Repita exatamente a mesma senha..." autocomplete="new-password" />' +
+        '              <div id="pwdMatchStatus" style="font-size:0.75rem;margin-top:3px;min-height:16px;"></div>' +
+        "            </div>" +
+        '            <div style="display:flex;align-items:center;gap:6px;">' +
+        '              <input type="checkbox" id="showPwdCheck" />' +
+        '              <label for="showPwdCheck" style="cursor:pointer;">Mostrar palavra-passe</label>' +
+        "            </div>" +
+        '            <div class="form-row-7z" style="grid-template-columns:145px 1fr;">' +
+        '              <label for="encMethodSelect">Método de encriptação:</label>' +
+        '              <select id="encMethodSelect" class="select-7z"><option value="AES-256" selected>AES-256</option></select>' +
+        "            </div>" +
+        '            <div style="background:#eff6ff;border:1px solid #bfdbfe;padding:7px 9px;border-radius:4px;">' +
+        '              <div style="display:flex;align-items:center;gap:6px;">' +
+        '                <input type="checkbox" id="encryptNamesCheck" />' +
+        '                <label for="encryptNamesCheck" style="cursor:pointer;font-weight:600;color:#1e3a8a;">Encriptar nomes dos arquivos</label>' +
+        "              </div>" +
+        '              <p style="font-size:0.74rem;color:#334155;margin-top:3px;margin-left:20px;">Oculta também os nomes dos arquivos internos, exigindo senha antes mesmo de listar o conteúdo do pacote.</p>' +
+        "            </div>" +
+        "          </div>" +
+        "        </div>" +
+        '        <div id="dlg7zValidationMsg" class="win-error-box hidden"></div>' +
+        '        <div id="compressProgressBox" class="hidden" style="background:#ffffff;border:1px solid #cbd5e1;padding:10px;">' +
+        '          <div style="font-size:0.78rem;margin-bottom:5px;display:flex;justify-content:space-between;">' +
+        "            <span>Compactando e criptografando com AES-256...</span>" +
+        '            <span id="compressPctLabel">0%</span>' +
+        "          </div>" +
+        '          <div class="progress-7z-track"><div class="progress-7z-fill" id="compressBarFill"></div></div>' +
+        "        </div>" +
+        '        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">' +
+        '          <button type="button" class="win-btn default" id="btn7zOk">OK</button>' +
+        '          <button type="button" class="win-btn" onclick="goToScreen(1)">Cancelar</button>' +
+        "        </div>" +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+        '  <div class="win-taskbar"><div class="win-start-btn">⊞ Iniciar</div><div style="font-size:0.75rem;">7-Zip File Manager</div></div>' +
+        "</div>";
+
+      setupStep2Events();
+    }
+
+    function goToScreen(num) {
+      state.screen = num;
+      renderCurrentScreen();
+    }
+
+    function setupStep2Events() {
+      const pwdInput = document.getElementById("pwdInput");
+      const pwdConfirm = document.getElementById("pwdConfirmInput");
+      const showCheck = document.getElementById("showPwdCheck");
+      const encNamesCheck = document.getElementById("encryptNamesCheck");
+      const formatSelect = document.getElementById("formatSelect");
+      const archiveNameInput = document.getElementById("archiveNameInput");
+      const btnOk = document.getElementById("btn7zOk");
+
+      formatSelect.addEventListener("change", function () {
+        const is7z = formatSelect.value === "7z";
+        archiveNameInput.value = "Relatorio_Financeiro_2026." + formatSelect.value;
+        encNamesCheck.disabled = !is7z;
+        if (!is7z) {
+          encNamesCheck.checked = false;
+          state.encryptFileNamesChecked = false;
+          updateLayoutAndSidebar();
+        }
+      });
+
+      showCheck.addEventListener("change", function () {
+        const t = showCheck.checked ? "text" : "password";
+        pwdInput.type = t;
+        pwdConfirm.type = t;
+      });
+
+      function updateLiveValidation() {
+        const pwd = pwdInput.value;
+        const conf = pwdConfirm.value;
+        const st = evaluatePasswordStrength(pwd);
+
+        document.getElementById("pwdStrengthFill").style.width = st.pct + "%";
+        document.getElementById("pwdStrengthFill").style.backgroundColor = st.color;
+        document.getElementById("pwdStrengthText").textContent = st.label;
+        document.getElementById("pwdStrengthText").style.color = st.color;
+        document.getElementById("pwdLengthCount").textContent = pwd.length + " caractere" + (pwd.length === 1 ? "" : "s");
+
+        const matchEl = document.getElementById("pwdMatchStatus");
+        if (!conf) {
+          matchEl.textContent = "";
+        } else if (pwd === conf) {
+          matchEl.textContent = "✓ As senhas coincidem perfeitamente.";
+          matchEl.style.color = "#16a34a";
+        } else {
+          matchEl.textContent = "✕ As senhas ainda não são iguais.";
+          matchEl.style.color = "#dc2626";
+        }
+
+        state.createdPassword = pwd;
+        state.encryptFileNamesChecked = encNamesCheck.checked;
+        updateLayoutAndSidebar();
+      }
+
+      pwdInput.addEventListener("input", updateLiveValidation);
+      pwdConfirm.addEventListener("input", updateLiveValidation);
+      encNamesCheck.addEventListener("change", updateLiveValidation);
+
+      btnOk.addEventListener("click", function () {
+        const errBox = document.getElementById("dlg7zValidationMsg");
+        errBox.classList.add("hidden");
+
+        if (formatSelect.value !== "7z") {
+          errBox.innerHTML = "⚠️ Selecione o <strong>Formato do arquivo: 7z</strong> para habilitar a encriptação de nomes.";
+          errBox.classList.remove("hidden");
+          return;
+        }
+        if (pwdInput.value.length < 6) {
+          errBox.innerHTML = "⚠️ Digite uma senha com <strong>pelo menos 6 caracteres</strong>.";
+          errBox.classList.remove("hidden");
+          pwdInput.focus();
+          return;
+        }
+        if (pwdInput.value !== pwdConfirm.value) {
+          errBox.innerHTML = "⚠️ As senhas digitadas não são iguais. Verifique o campo <em>Reintroduzir palavra-passe</em>.";
+          errBox.classList.remove("hidden");
+          pwdConfirm.focus();
+          return;
+        }
+        if (!encNamesCheck.checked) {
+          errBox.innerHTML = "⚠️ Marque a caixa <strong>Encriptar nomes dos arquivos</strong> antes de clicar em OK.";
+          errBox.classList.remove("hidden");
+          return;
+        }
+
+        btnOk.disabled = true;
+        const progBox = document.getElementById("compressProgressBox");
+        const progFill = document.getElementById("compressBarFill");
+        const progPct = document.getElementById("compressPctLabel");
+        progBox.classList.remove("hidden");
+
+        let pct = 0;
+        const timer = setInterval(function () {
+          pct += 25;
+          progFill.style.width = pct + "%";
+          progPct.textContent = pct + "%";
+          if (pct >= 100) {
+            clearInterval(timer);
+            state.archiveCreated = true;
+            updateLayoutAndSidebar();
+            setTimeout(function () {
+              state.screen = 3;
+              renderCurrentScreen();
+            }, 400);
+          }
+        }, 220);
+      });
+    }
+
+    /* ---------------------------------------------------------------------
+       ETAPA 3: TESTE DE BLOQUEIO (DIGITANDO A SENHA ERRADA EXPLICADA)
+       --------------------------------------------------------------------- */
+    function renderScreen3WrongPasswordTest(container) {
+      const wrongSample = getSuggestedWrongPassword();
+
+      container.innerHTML =
+        '<div class="win-desktop">' +
+        '  <div class="win-explorer">' +
+        '    <div class="win-titlebar">' +
+        '      <div style="display:flex;align-items:center;gap:8px;">' + icons.folder + "<span>Relatorios_2026 - Explorador de Arquivos</span></div>" +
+        '      <div class="win-controls"><span class="win-ctrl-btn">_</span><span class="win-ctrl-btn">□</span><span class="win-ctrl-btn close">✕</span></div>' +
+        "    </div>" +
+        '    <div class="win-addressbar">' +
+        "      <span>⬅ ➡</span>" +
+        '      <div class="win-path-box">' + icons.folder + "<span>Este Computador &gt; Documentos &gt; Relatorios_2026</span></div>" +
+        "    </div>" +
+        '    <div class="win-files-area">' +
+        '      <div class="win-files-table-header"><span>Nome</span><span>Tipo</span><span>Tamanho</span></div>' +
+        '      <div class="file-row">' +
+        '        <div class="file-name-cell">' + icons.pdf + "<span>Relatorio_Financeiro_2026.pdf</span></div>" +
+        '        <div class="file-meta">Documento PDF (Original)</div>' +
+        '        <div class="file-meta">2.480 KB</div>' +
+        "      </div>" +
+        '      <div class="file-row selected target-highlight" ondblclick="openWrongPwdModal()">' +
+        '        <div class="file-name-cell">' + icons.archive7z + "<span><strong>Relatorio_Financeiro_2026.7z</strong></span></div>" +
+        '        <div class="file-meta" style="color:#15803d;font-weight:600;">Arquivo 7z Protegido (AES-256)</div>' +
+        '        <div class="file-meta">1.140 KB</div>' +
+        '        <div style="grid-column:1/-1;margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#fef2f2;padding:7px 10px;border-radius:4px;border:1px solid #fecaca;">' +
+        '          <span style="font-size:0.79rem;color:#7f1d1d;">🔒 Clique em <strong>Abrir / Extrair</strong> para testar o bloqueio com a senha errada <code style="background:#fee2e2;padding:1px 5px;border-radius:3px;font-weight:bold;">' + escapeHTML(wrongSample) + "</code>.</span>" +
+        '          <button type="button" class="win-btn default" style="padding:3px 10px;font-size:0.76rem;" onclick="openWrongPwdModal()">Abrir / Extrair</button>' +
+        "        </div>" +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+
+        '  <div class="win-modal-overlay" id="wrongPwdOverlay">' +
+        '    <div class="dialog-7z" style="max-width:440px;">' +
+        '      <div class="win-titlebar">' +
+        '        <div style="display:flex;align-items:center;gap:6px;"><span class="ctx-badge-7z">7z</span><span>Introduzir palavra-passe</span></div>' +
+        '        <div class="win-controls"><span class="win-ctrl-btn close" onclick="closeWrongPwdModal()">✕</span></div>' +
+        "      </div>" +
+        '      <div class="dialog-7z-body">' +
+        '        <div style="background:#fef2f2;border:1px solid #fca5a5;padding:9px 11px;border-radius:4px;color:#7f1d1d;font-size:0.8rem;">' +
+        "          <strong>🧪 Teste de Segurança:</strong> Digite a senha incorreta " +
+        '          <code style="background:#fee2e2;border:1px solid #f87171;padding:1px 6px;border-radius:3px;font-weight:800;font-size:0.86rem;">' + escapeHTML(wrongSample) + "</code> " +
+        "          para verificar como o 7-Zip bloqueia invasores." +
+        "        </div>" +
+        "        <div>" +
+        '          <label for="wrongPwdInput" style="display:block;margin-bottom:4px;font-weight:600;">Introduzir palavra-passe:</label>' +
+        '          <input type="text" id="wrongPwdInput" class="input-7z" placeholder="Digite: ' + escapeHTML(wrongSample) + '" autocomplete="off" />' +
+        "        </div>" +
+        '        <div id="wrongPwdErrorDialog" class="win-error-box hidden"></div>' +
+        '        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:4px;">' +
+        '          <button type="button" class="win-btn" style="font-size:0.75rem;padding:4px 9px;" id="btnFillWrongSample">Preencher "' + escapeHTML(wrongSample) + '"</button>' +
+        '          <div style="display:flex;gap:6px;">' +
+        '            <button type="button" class="win-btn default" id="btnTestWrongOk">OK</button>' +
+        '            <button type="button" class="win-btn" onclick="closeWrongPwdModal()">Cancelar</button>' +
+        "          </div>" +
+        "        </div>" +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+
+        '  <div class="win-taskbar"><div class="win-start-btn">⊞ Iniciar</div><div style="font-size:0.75rem;">Teste de Autenticação AES-256</div></div>' +
+        "</div>";
+
+      const wrongInput = document.getElementById("wrongPwdInput");
+      const btnFill = document.getElementById("btnFillWrongSample");
+      const btnOk = document.getElementById("btnTestWrongOk");
+      const errDialog = document.getElementById("wrongPwdErrorDialog");
+
+      btnFill.addEventListener("click", function () {
+        wrongInput.value = wrongSample;
+        wrongInput.focus();
+      });
+
+      wrongInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") btnOk.click();
+      });
+
+      btnOk.addEventListener("click", function () {
+        const val = wrongInput.value;
+        if (!val) {
+          errDialog.innerHTML = '⚠️ Digite a senha errada sugerida (<strong>' + escapeHTML(wrongSample) + "</strong>) no campo acima.";
+          errDialog.classList.remove("hidden");
+          wrongInput.focus();
+          return;
+        }
+        if (val === state.createdPassword) {
+          errDialog.innerHTML = '⚠️ Você digitou a senha <strong>correta</strong>! Nesta etapa, digite a senha errada <strong>' + escapeHTML(wrongSample) + "</strong> para testar o bloqueio.";
+          errDialog.classList.remove("hidden");
+          wrongInput.select();
+          return;
+        }
+
+        // Sucesso no teste de erro! Exibe mensagem clássica do 7-Zip
+        state.testedWrongPassword = true;
+        updateLayoutAndSidebar();
+        errDialog.innerHTML =
+          '<span style="font-size:1.15rem;">❌</span>' +
+          "<div>" +
+          "<strong>7-Zip — Erro de dados no arquivo encriptado. Palavra-passe incorreta?</strong><br>" +
+          "<span>Bloqueio comprovado! Agora clique em <strong>Avançar para Etapa 4</strong> abaixo ou no painel lateral.</span>" +
+          '<div style="margin-top:8px;"><button type="button" class="win-btn default" onclick="goToScreen(4)">OK (Ir para Etapa 4) →</button></div>' +
+          "</div>";
+        errDialog.classList.remove("hidden");
+      });
+
+      setTimeout(function () {
+        if (wrongInput) wrongInput.focus();
+      }, 60);
+    }
+
+    function openWrongPwdModal() {
+      const el = document.getElementById("wrongPwdOverlay");
+      if (el) el.classList.remove("hidden");
+    }
+
+    function closeWrongPwdModal() {
+      const el = document.getElementById("wrongPwdOverlay");
+      if (el) el.classList.add("hidden");
+    }
+
+    /* ---------------------------------------------------------------------
+       ETAPA 4: DESCRIPTOGRAFIA E EXTRAÇÃO (SENHA CORRETA)
+       --------------------------------------------------------------------- */
+    function renderScreen4RightPasswordExtract(container) {
+      container.innerHTML =
+        '<div class="win-desktop">' +
+        '  <div class="win-explorer">' +
+        '    <div class="win-titlebar">' +
+        '      <div style="display:flex;align-items:center;gap:8px;">' + icons.folder + "<span>Relatorios_2026 - Explorador de Arquivos</span></div>" +
+        '      <div class="win-controls"><span class="win-ctrl-btn">_</span><span class="win-ctrl-btn">□</span><span class="win-ctrl-btn close">✕</span></div>' +
+        "    </div>" +
+        '    <div class="win-addressbar">' +
+        "      <span>⬅ ➡</span>" +
+        '      <div class="win-path-box">' + icons.folder + "<span>Este Computador &gt; Documentos &gt; Relatorios_2026</span></div>" +
+        "    </div>" +
+        '    <div class="win-files-area">' +
+        '      <div class="win-files-table-header"><span>Nome</span><span>Tipo</span><span>Tamanho</span></div>' +
+        '      <div class="file-row selected" ondblclick="openRightPwdModal()">' +
+        '        <div class="file-name-cell">' + icons.archive7z + "<span><strong>Relatorio_Financeiro_2026.7z</strong></span></div>" +
+        '        <div class="file-meta" style="color:#15803d;font-weight:600;">Arquivo 7z Protegido (AES-256)</div>' +
+        '        <div class="file-meta">1.140 KB</div>' +
+        "      </div>" +
+        '      <div id="extractedResultBox" class="' + (state.extractedSuccess ? "" : "hidden") + '" style="margin-top:16px;background:#f0fdf4;border:1px solid #22c55e;border-radius:8px;padding:16px;">' +
+        '        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+        '          <span style="font-size:1.35rem;">🔓</span>' +
+        '          <strong style="color:#14532d;font-size:0.96rem;">Arquivo Descriptografado e Extraído com Sucesso!</strong>' +
+        "        </div>" +
+        '        <p style="font-size:0.84rem;color:#166534;margin-bottom:12px;">' +
+        "          A chave AES-256 foi validada e o arquivo <strong>Relatorio_Financeiro_2026.pdf</strong> foi restaurado sem perda de dados." +
+        "        </p>" +
+        '        <button type="button" class="btn-success" onclick="finishPracticeAndShowReport()">Concluir Atividade e Gerar Relatório →</button>' +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+
+        '  <div class="win-modal-overlay ' + (state.extractedSuccess ? "hidden" : "") + '" id="rightPwdOverlay">' +
+        '    <div class="dialog-7z" style="max-width:430px;">' +
+        '      <div class="win-titlebar">' +
+        '        <div style="display:flex;align-items:center;gap:6px;"><span class="ctx-badge-7z">7z</span><span>Introduzir palavra-passe</span></div>' +
+        '        <div class="win-controls"><span class="win-ctrl-btn close" onclick="closeRightPwdModal()">✕</span></div>' +
+        "      </div>" +
+        '      <div class="dialog-7z-body">' +
+        '        <p style="font-size:0.81rem;color:#1e293b;">' +
+        "          Agora informe a <strong>senha correta</strong> que você criou na Etapa 2 para descriptografar e extrair <strong>Relatorio_Financeiro_2026.pdf</strong>:" +
+        "        </p>" +
+        "        <div>" +
+        '          <label for="rightPwdInput" style="display:block;margin-bottom:4px;font-weight:600;">Introduzir palavra-passe:</label>' +
+        '          <input type="password" id="rightPwdInput" class="input-7z" placeholder="Digite a sua senha correta..." autocomplete="off" />' +
+        "        </div>" +
+        '        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">' +
+        '          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">' +
+        '            <input type="checkbox" id="rightShowPwd" /> Mostrar palavra-passe' +
+        "          </label>" +
+        '          <button type="button" class="win-btn" style="font-size:0.74rem;padding:3px 8px;" id="btnRemindPwd">Lembrar minha senha</button>' +
+        "        </div>" +
+        '        <div id="rightPwdMsgBox" class="win-error-box hidden"></div>' +
+        '        <div id="extractProgressBox" class="hidden" style="background:#ffffff;border:1px solid #cbd5e1;padding:9px;">' +
+        '          <div style="font-size:0.78rem;margin-bottom:4px;display:flex;justify-content:space-between;">' +
+        "            <span>Extraindo Relatorio_Financeiro_2026.pdf...</span>" +
+        '            <span id="extractPctLabel">0%</span>' +
+        "          </div>" +
+        '          <div class="progress-7z-track"><div class="progress-7z-fill" id="extractBarFill"></div></div>' +
+        "        </div>" +
+        '        <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px;">' +
+        '          <button type="button" class="win-btn default" id="btnExtractOk">OK</button>' +
+        '          <button type="button" class="win-btn" onclick="closeRightPwdModal()">Cancelar</button>' +
+        "        </div>" +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+
+        '  <div class="win-taskbar"><div class="win-start-btn">⊞ Iniciar</div><div style="font-size:0.75rem;">Extração Segura AES-256</div></div>' +
+        "</div>";
+
+      const rightInput = document.getElementById("rightPwdInput");
+      const showChk = document.getElementById("rightShowPwd");
+      const btnRemind = document.getElementById("btnRemindPwd");
+      const btnOk = document.getElementById("btnExtractOk");
+      const msgBox = document.getElementById("rightPwdMsgBox");
+
+      showChk.addEventListener("change", function () {
+        rightInput.type = showChk.checked ? "text" : "password";
+      });
+
+      btnRemind.addEventListener("click", function () {
+        msgBox.style.background = "#eff6ff";
+        msgBox.style.borderColor = "#93c5fd";
+        msgBox.style.color = "#1e3a8a";
+        msgBox.innerHTML = "🔑 Lembrete: A senha que você criou foi <strong>" + escapeHTML(state.createdPassword) + "</strong>";
+        msgBox.classList.remove("hidden");
+      });
+
+      rightInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") btnOk.click();
+      });
+
+      btnOk.addEventListener("click", function () {
+        if (rightInput.value !== state.createdPassword) {
+          msgBox.style.background = "#fff1f2";
+          msgBox.style.borderColor = "#fda4af";
+          msgBox.style.color = "#9f1239";
+          msgBox.innerHTML = "❌ Palavra-passe incorreta! Clique em <em>'Lembrar minha senha'</em> se precisar conferir.";
+          msgBox.classList.remove("hidden");
+          rightInput.select();
+          return;
+        }
+
+        msgBox.classList.add("hidden");
+        btnOk.disabled = true;
+        const progBox = document.getElementById("extractProgressBox");
+        const progFill = document.getElementById("extractBarFill");
+        const progPct = document.getElementById("extractPctLabel");
+        progBox.classList.remove("hidden");
+
+        let pct = 0;
+        const timer = setInterval(function () {
+          pct += 25;
+          progFill.style.width = pct + "%";
+          progPct.textContent = pct + "%";
+          if (pct >= 100) {
+            clearInterval(timer);
+            state.extractedSuccess = true;
+            updateLayoutAndSidebar();
+            setTimeout(function () {
+              closeRightPwdModal();
+              document.getElementById("extractedResultBox").classList.remove("hidden");
+            }, 350);
+          }
+        }, 180);
+      });
+
+      setTimeout(function () {
+        if (rightInput && !state.extractedSuccess) rightInput.focus();
+      }, 60);
+    }
+
+    function openRightPwdModal() {
+      const el = document.getElementById("rightPwdOverlay");
+      if (el) el.classList.remove("hidden");
+    }
+
+    function closeRightPwdModal() {
+      const el = document.getElementById("rightPwdOverlay");
+      if (el) el.classList.add("hidden");
+    }
+
+    /* ---------------------------------------------------------------------
+       TELA FINAL: RELATÓRIO DE DESEMPENHO E GERAÇÃO DE PDF OFFLINE
+       --------------------------------------------------------------------- */
+    function finishPracticeAndShowReport() {
+      stopTimer();
+      const now = new Date();
+      state.completionTimestamp =
+        now.toLocaleDateString("pt-BR") + " às " + now.toLocaleTimeString("pt-BR");
+
+      // Gerar código único de autenticação determinístico
+      const rawSig = state.studentName + "|" + state.completionTimestamp + "|" + state.elapsedSeconds;
+      let hash = 0x811c9dc5;
+      for (let i = 0; i < rawSig.length; i++) {
+        hash ^= rawSig.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193);
+      }
+      state.authCode = "7Z-AES-" + (hash >>> 0).toString(16).toUpperCase().padStart(8, "0");
+
+      state.screen = 5;
+      renderCurrentScreen();
+    }
+
+    function renderScreen5FinalReport(container) {
+      const timeFormatted = formatDuration(state.elapsedSeconds);
+
+      container.innerHTML =
+        '<div class="centered-card-screen">' +
+        '  <div class="report-card">' +
+        '    <div class="report-header">' +
+        '      <div style="font-size:2rem;margin-bottom:4px;">🏆</div>' +
+        '      <h2 style="font-size:1.35rem;margin-bottom:4px;">Atividade Prática Concluída com Sucesso!</h2>' +
+        '      <p style="font-size:0.88rem;opacity:0.92;">Laboratório Virtual: Criptografia de Arquivos com 7-Zip (AES-256)</p>' +
+        "    </div>" +
+        '    <div class="report-grid">' +
+        '      <div class="report-field"><span>Aluno(a)</span><strong>' + escapeHTML(state.studentName) + "</strong></div>" +
+        '      <div class="report-field"><span>Turma / Série</span><strong>' + escapeHTML(state.studentClass) + "</strong></div>" +
+        '      <div class="report-field"><span>Data e Hora</span><strong>' + escapeHTML(state.completionTimestamp) + "</strong></div>" +
+        '      <div class="report-field"><span>Tempo de Execução</span><strong>' + escapeHTML(timeFormatted) + "</strong></div>" +
+        '      <div class="report-field"><span>Desempenho</span><strong style="color:#16a34a;">100% (4/4 Etapas Concluídas)</strong></div>' +
+        '      <div class="report-field"><span>Código de Validação</span><strong style="font-family:Consolas,monospace;color:#1e40af;">' + escapeHTML(state.authCode) + "</strong></div>" +
+        "    </div>" +
+        '    <div class="report-actions-list">' +
+        '      <strong style="display:block;margin-bottom:6px;">Competências Práticas Executadas:</strong>' +
+        '      <ul style="padding-left:18px;">' +
+        "        <li>Navegação no Explorador de Arquivos e acesso ao menu de contexto do 7-Zip.</li>" +
+        "        <li>Configuração de pacote <strong>.7z</strong> com criptografia <strong>AES-256</strong> e proteção de nomes dos arquivos.</li>" +
+        "        <li>Validação de bloqueio de acesso mediante tentativa com palavra-passe incorreta.</li>" +
+        "        <li>Descriptografia e extração íntegra do documento com a chave correta.</li>" +
+        "      </ul>" +
+        "    </div>" +
+        '    <div style="display:flex;flex-wrap:wrap;gap:12px;">' +
+        '      <button type="button" class="btn-success" style="flex:2;min-width:220px;" onclick="downloadPerformancePDF()">📄 Baixar Comprovante em PDF</button>' +
+        '      <button type="button" class="btn-secondary" style="flex:1;min-width:150px;" onclick="resetAllPractice()">↺ Refazer Prática</button>' +
+        "    </div>" +
+        "  </div>" +
+        "</div>";
+    }
+
+    /* =====================================================================
+       GERADOR DE ARQUIVO PDF 1.4 VÁLIDO EM JAVASCRIPT PURO (100% OFFLINE)
+       ===================================================================== */
+    function toPdfWinAnsiBytes(str) {
+      // Converte texto UTF-16 para bytes WinAnsiEncoding (Latin-1) e escapa parênteses/barras do PDF
+      let out = "";
+      for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        let ch = "?";
+        if (code === 0x28 || code === 0x29 || code === 0x5c) {
+          ch = "\\" + String.fromCharCode(code);
+        } else if (code >= 0x20 && code <= 0xff) {
+          ch = String.fromCharCode(code);
+        }
+        out += ch;
+      }
+      return out;
+    }
+
+    function downloadPerformancePDF() {
+      const lines = [
+        { text: "COMPROVANTE DE ATIVIDADE PRATICA - LABORATORIO 7-ZIP", size: 14, bold: true, y: 760 },
+        { text: "Tema: Criptografia de Arquivos com Algoritmo AES-256", size: 11, bold: false, y: 740 },
+        { text: "--------------------------------------------------------------------------", size: 10, bold: false, y: 722 },
+        { text: "Aluno(a): " + state.studentName, size: 12, bold: true, y: 696 },
+        { text: "Turma / Serie: " + state.studentClass, size: 11, bold: false, y: 676 },
+        { text: "Data e Hora de Conclusao: " + state.completionTimestamp, size: 11, bold: false, y: 656 },
+        { text: "Tempo Total de Execucao: " + formatDuration(state.elapsedSeconds), size: 11, bold: false, y: 636 },
+        { text: "Desempenho Obtido: 100% (4 de 4 etapas praticas concluidas)", size: 11, bold: true, y: 616 },
+        { text: "Codigo de Autenticacao: " + state.authCode, size: 11, bold: true, y: 596 },
+        { text: "--------------------------------------------------------------------------", size: 10, bold: false, y: 576 },
+        { text: "Etapas Praticas Realizadas na Simulacao:", size: 12, bold: true, y: 552 },
+        { text: "[OK] Etapa 1: Selecao do arquivo e acesso ao menu de contexto do 7-Zip.", size: 10, bold: false, y: 530 },
+        { text: "[OK] Etapa 2: Criacao de pacote .7z com senha forte, AES-256 e", size: 10, bold: false, y: 512 },
+        { text: "              opcao 'Encriptar nomes dos arquivos' ativada.", size: 10, bold: false, y: 498 },
+        { text: "[OK] Etapa 3: Teste de bloqueio com senha incorreta comprovado.", size: 10, bold: false, y: 480 },
+        { text: "[OK] Etapa 4: Descriptografia e extracao com a senha correta.", size: 10, bold: false, y: 462 },
+        { text: "--------------------------------------------------------------------------", size: 10, bold: false, y: 438 },
+        { text: "Documento gerado localmente pelo Laboratorio Virtual 7-Zip (100% Offline).", size: 9, bold: false, y: 416 }
+      ];
+
+      let contentStream = "BT\n";
+      for (let i = 0; i < lines.length; i++) {
+        const item = lines[i];
+        const fontRef = item.bold ? "/F2" : "/F1";
+        const safeText = toPdfWinAnsiBytes(item.text);
+        contentStream += fontRef + " " + item.size + " Tf\n";
+        contentStream += "1 0 0 1 50 " + item.y + " Tm\n";
+        contentStream += "(" + safeText + ") Tj\n";
+      }
+      contentStream += "ET\n";
+
+      const objects = [];
+      objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+      objects.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+      objects.push(
+        "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] " +
+        "/Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>\nendobj\n"
+      );
+      objects.push("4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n");
+      objects.push("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n");
+      objects.push("6 0 obj\n<< /Length " + contentStream.length + " >>\nstream\n" + contentStream + "endstream\nendobj\n");
+
+      let pdf = "%PDF-1.4\n";
+      const offsets = [0];
+      for (let i = 0; i < objects.length; i++) {
+        offsets.push(pdf.length);
+        pdf += objects[i];
+      }
+
+      const xrefStart = pdf.length;
+      pdf += "xref\n0 " + (objects.length + 1) + "\n";
+      pdf += "0000000000 65535 f \n";
+      for (let i = 1; i < offsets.length; i++) {
+        pdf += String(offsets[i]).padStart(10, "0") + " 00000 n \n";
+      }
+
+      pdf += "trailer\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\n";
+      pdf += "startxref\n" + xrefStart + "\n%%EOF";
+
+      // Converter string Latin-1 para Uint8Array binário puro
+      const bytes = new Uint8Array(pdf.length);
+      for (let i = 0; i < pdf.length; i++) {
+        bytes[i] = pdf.charCodeAt(i) & 0xff;
+      }
+
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const cleanName = state.studentName
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]+/g, "_")
+        .replace(/^_|_$/g, "");
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Comprovante_7Zip_" + (cleanName || "Aluno") + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 1500);
+    }
+
+    /* =====================================================================
+       BOTÃO AVANÇAR DO PAINEL LATERAL E REINÍCIO
+       ===================================================================== */
+    document.getElementById("btnNextStep").addEventListener("click", function () {
+      if (state.screen === 3 && state.testedWrongPassword) {
+        state.screen = 4;
+        renderCurrentScreen();
+      } else if (state.screen === 4 && state.extractedSuccess) {
+        finishPracticeAndShowReport();
+      }
+    });
+
+    function resetAllPractice() {
+      stopTimer();
+      state.screen = 0;
+      state.fileSelected = false;
+      state.contextMenuOpened = false;
+      state.createdPassword = "";
+      state.encryptFileNamesChecked = false;
+      state.archiveCreated = false;
+      state.testedWrongPassword = false;
+      state.extractedSuccess = false;
+      state.elapsedSeconds = 0;
+      document.getElementById("timerDisplay").textContent = "00:00";
+      renderCurrentScreen();
+    }
+
+    window.addEventListener("DOMContentLoaded", function () {
+      renderCurrentScreen();
+    });
+  </script>
+</body>
+</html>
